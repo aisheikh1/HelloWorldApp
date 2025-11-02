@@ -1,0 +1,39 @@
+steps:
+# 1. Build the container image
+# We use $PROJECT_ID and $COMMIT_SHA variables which Cloud Build automatically provides.
+# Artifact Registry repository name: cloud-run-repo (You will create this)
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Build'
+  args:
+    - 'build'
+    - '-t'
+    - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-repo/helloworld:$COMMIT_SHA'
+    - '.'
+
+# 2. Push the container image to Artifact Registry
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Push'
+  args:
+    - 'push'
+    - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-repo/helloworld:$COMMIT_SHA'
+
+# 3. Deploy the container image to Cloud Run
+# This step deploys the image we just pushed to a new Cloud Run service named 'helloworld-service'.
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  id: 'Deploy'
+  entrypoint: 'gcloud'
+  args:
+    - 'run'
+    - 'deploy'
+    - 'helloworld-service'  # The name of your Cloud Run service
+    - '--image'
+    - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-repo/helloworld:$COMMIT_SHA'
+    - '--region'
+    - 'us-central1'
+    - '--platform'
+    - 'managed'
+    - '--allow-unauthenticated' # Allows public access (good for a beginner test)
+
+# Specify the images created during the build for automatic permission setup
+images:
+- 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-repo/helloworld:$COMMIT_SHA'
